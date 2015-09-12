@@ -18,7 +18,7 @@ namespace Viewer {
         private void frmMain_Load(object sender, EventArgs e) {
             // Get image from cli args, if any
             string[] args = Environment.GetCommandLineArgs();
-            if (args.Length >= 1) {
+            if (args.Length > 1) {
                 if (File.Exists(args[args.Length - 1])) {
                     string filePath = args[args.Length - 1];
                     openImage(filePath);
@@ -32,6 +32,21 @@ namespace Viewer {
             // Handle events needing a resize
             Resize += new EventHandler(frmMain_Resize);
             pbox.LoadCompleted += new AsyncCompletedEventHandler(pbox_LoadCompleted);
+
+            // Remember window position and sizing
+            FormClosing += new FormClosingEventHandler(frmMain_Closing);
+            if (Properties.Settings.Default.Maximized) {
+                WindowState = FormWindowState.Maximized;
+                Location = Properties.Settings.Default.Location;
+                Size = Properties.Settings.Default.Size;
+            } else if (Properties.Settings.Default.Minimized) {
+                WindowState = FormWindowState.Minimized;
+                Location = Properties.Settings.Default.Location;
+                Size = Properties.Settings.Default.Size;
+            } else {
+                Location = Properties.Settings.Default.Location;
+                Size = Properties.Settings.Default.Size;
+            }
         }
 
         private void frmMain_Resize(object sender, EventArgs e) {
@@ -65,6 +80,36 @@ namespace Viewer {
                 e.SuppressKeyPress = true;
                 showImageProperties();
             }
+            if(e.Control && e.KeyCode == Keys.Oemcomma || e.Control && e.Shift && e.KeyCode == Keys.P) {
+                e.SuppressKeyPress = true;
+                frmSettings frm = new frmSettings();
+                frm.ShowDialog(this);
+            }
+            if(e.KeyCode == Keys.Escape) {
+                e.SuppressKeyPress = true;
+                Close();
+            }
+        }
+
+        public void frmMain_Closing(object sender, FormClosingEventArgs e) {
+            // Save window settings
+            if (WindowState == FormWindowState.Maximized) {
+                Properties.Settings.Default.Location = RestoreBounds.Location;
+                Properties.Settings.Default.Size = RestoreBounds.Size;
+                Properties.Settings.Default.Maximized = true;
+                Properties.Settings.Default.Minimized = false;
+            } else if (WindowState == FormWindowState.Normal) {
+                Properties.Settings.Default.Location = Location;
+                Properties.Settings.Default.Size = Size;
+                Properties.Settings.Default.Maximized = false;
+                Properties.Settings.Default.Minimized = false;
+            } else {
+                Properties.Settings.Default.Location = RestoreBounds.Location;
+                Properties.Settings.Default.Size = RestoreBounds.Size;
+                Properties.Settings.Default.Maximized = false;
+                Properties.Settings.Default.Minimized = true;
+            }
+            Properties.Settings.Default.Save();
         }
 
         public void openImage(string path) {
@@ -72,11 +117,13 @@ namespace Viewer {
             string[] files = Directory.GetFiles(Path.GetDirectoryName(path));
 
             // Filter to only images
-            string[] images = files.Where(s => s.Length > 4 && (
-                    s.Substring(s.Length - 4, 4) == ".jpg" ||
-                    s.Substring(s.Length - 4, 4) == ".png" ||
-                    s.Substring(s.Length - 4, 4) == ".gif" ||
-                    s.Substring(s.Length - 4, 4) == ".bmp")
+            string[] images = files.Where(s =>
+                    s.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    s.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                    s.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                    s.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
+                    s.EndsWith(".wmp", StringComparison.OrdinalIgnoreCase) ||
+                    s.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase)
                 ).ToArray();
             
             // Sort resulting array
@@ -84,7 +131,7 @@ namespace Viewer {
             this.files = images;
 
             // Set this.index to position of selected image in directory
-            index = Array.IndexOf(images, path);
+            index = Array.IndexOf(images, Path.GetFullPath(path));
 
             // Load image into pbox
             pbox.ImageLocation = path;
@@ -129,7 +176,7 @@ namespace Viewer {
 
         public void showOpenDialog() {
             OpenFileDialog dlg = new OpenFileDialog();
-            dlg.Filter = "Images|*.jpg;*.png;*.gif;*.bmp"; // |All files|*.*
+            dlg.Filter = "Images|*.jpg;*.jpeg;*.png;*.gif;*.wmf;*.bmp"; // |All files|*.*
             dlg.FilterIndex = 1;
             dlg.RestoreDirectory = true;
 
@@ -177,7 +224,14 @@ namespace Viewer {
                 text += "\r\nSize: " + (info.Length / 1024) + " KB";
                 text += "\r\nDimensions: " + pbox.Image.Width + "x" + pbox.Image.Height;
                 MessageBox.Show(text, Path.GetFileName(pbox.ImageLocation) + " Properties");
+            } else {
+                MessageBox.Show("No image loaded.", pbox.ImageLocation + " Properties");
             }
+        }
+
+        private void btnSettings_Click(object sender, EventArgs e) {
+            frmSettings frm = new frmSettings();
+            frm.ShowDialog(this);
         }
     }
 }

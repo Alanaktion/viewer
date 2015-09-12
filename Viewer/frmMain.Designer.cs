@@ -127,8 +127,6 @@
             // pbox
             // 
             this.pbox.ContextMenuStrip = this.contextMenuStrip1;
-            this.pbox.Image = global::Viewer.Properties.Resources.Outlook;
-            this.pbox.InitialImage = global::Viewer.Properties.Resources.Outlook;
             this.pbox.Location = new System.Drawing.Point(12, 28);
             this.pbox.Name = "pbox";
             this.pbox.Size = new System.Drawing.Size(64, 64);
